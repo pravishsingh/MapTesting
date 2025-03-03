@@ -33,24 +33,50 @@ async function getRoute(start, end) {
     routeLayer = L.polyline(coordinates, { color: 'blue', weight: 4 }).addTo(map);
 }
 
+
+var traveledPath = [];
+
 async function startJourney() {
-    getRoute(startPoint, endPoint)
+    await getRoute(startPoint, endPoint);
 
     let watchId = navigator.geolocation.watchPosition(
         async function (position) {
-            marker.setLatLng([position.coords.latitude, position.coords.longitude]);
-            let { distance, time } = await getRouteDistanceTime(position.coords.latitude, position.coords.longitude, endPoint[0], endPoint[1]);
+            let lat = position.coords.latitude;
+            let lng = position.coords.longitude;
+            let currentPos = [lat, lng];
+
+            console.log("Current Position ->", currentPos);
+            marker.setLatLng(currentPos);
+
+            traveledPath.push(currentPos);
+
+            coordinates = coordinates.filter(coord => {
+                return !(Math.abs(coord[0] - lat) < 0.0005 && Math.abs(coord[1] - lng) < 0.0005);
+            });
+
+            if (coordinates.length === 0) {
+                if (routeLayer) {
+                    map.removeLayer(routeLayer);
+                }
+                marker.bindPopup("Your item reached the destination!").openPopup();
+                navigator.geolocation.clearWatch(watchId);
+                return;
+            }
+
+            if (routeLayer) {
+                map.removeLayer(routeLayer);
+            }
+            routeLayer = L.polyline(coordinates, { color: 'blue', weight: 4 }).addTo(map);
+
+            L.polyline(traveledPath, { color: 'gray', weight: 3, dashArray: "5, 10" }).addTo(map);
+
+            let { distance, time } = await getRouteDistanceTime(lat, lng, endPoint[0], endPoint[1]);
 
             marker.bindPopup(`
                 Remaining Distance: ${distance} km<br>
                 Speed: ${speed} km/hr<br>
                 Estimated Time: ${time}
             `).openPopup();
-
-            console.log("Latitude: " + position.coords.latitude);
-            console.log("Longitude: " + position.coords.longitude);
-
-            // marker.bindPopup("Your item reached the destination!").openPopup();
         },
         function (error) {
             console.error("Error getting location:", error);
@@ -62,6 +88,7 @@ async function startJourney() {
         }
     );
 }
+
 
 
 
