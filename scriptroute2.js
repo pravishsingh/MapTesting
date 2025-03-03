@@ -11,92 +11,69 @@ var scooterIcon = L.icon({
     className: 'scooter-icon'
 });
 
-var startPoint = [28.39, 77.04];
 var endPoint = [28.4135, 77.0415];
+var routeLayer = null;
+var speed = 50;
 
-var marker = L.marker(startPoint, { icon: scooterIcon }).addTo(map);
 var marker1 = L.marker(endPoint).addTo(map);
 marker1.bindPopup("<b>Outlet</b><br> Destination point.").openPopup();
 
-var routeLayer = null;
-var coordinates = [];
-var index = 0;
-var speed = 50; // Speed in km/hr
-var intervalId = null;
+
+navigator.geolocation.getCurrentPosition(
+    async function (position) {
+        var startPoint = [position.coords.latitude, position.coords.longitude];
+
+        var marker = L.marker(startPoint, { icon: scooterIcon }).addTo(map);
+
+        await getRoute(startPoint, endPoint);
+
+        let watchId = navigator.geolocation.watchPosition(
+            async function (position) {
+                let currentLocation = [position.coords.latitude, position.coords.longitude];
+                marker.setLatLng(currentLocation);
+
+                let { distance, time } = await getRouteDistanceTime(
+                    position.coords.latitude, position.coords.longitude,
+                    endPoint[0], endPoint[1]
+                );
+
+                marker.bindPopup(`
+                    Remaining Distance: ${distance} km<br>
+                    Speed: ${speed} km/hr<br>
+                    Estimated Time: ${time}
+                `).openPopup();
+
+                console.log("Latitude: " + position.coords.latitude);
+                console.log("Longitude: " + position.coords.longitude);
+
+                if (distance < 0.1) {
+                    marker.bindPopup("Your item reached the destination!").openPopup();
+                }
+            },
+            function (error) {
+                console.error("Error getting location:", error);
+            },
+            {
+                enableHighAccuracy: true,
+                maximumAge: 0,
+                timeout: 2000
+            }
+        );
+    },
+    function (error) {
+        console.error("Error getting initial location:", error);
+    }
+);
 
 async function getRoute(start, end) {
     let url = `https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${end[1]},${end[0]}?overview=full&geometries=geojson`;
     let response = await fetch(url);
     let data = await response.json();
-    coordinates = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
-    // console.log(coordinates);
+    let coordinates = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+
+    if (routeLayer) map.removeLayer(routeLayer);
     routeLayer = L.polyline(coordinates, { color: 'blue', weight: 4 }).addTo(map);
 }
-
-async function startJourney() {
-    getRoute(startPoint, endPoint)
-
-    let watchId = navigator.geolocation.watchPosition(
-        async function (position) {
-            marker.setLatLng([position.coords.latitude, position.coords.longitude]);
-
-            await getRoute([position.coords.latitude, position.coords.longitude], [endPoint[0], endPoint[1]]);
-
-            let { distance, time } = await getRouteDistanceTime(position.coords.latitude, position.coords.longitude, endPoint[0], endPoint[1]);
-
-            marker.bindPopup(`
-                Remaining Distance: ${distance} km<br>
-                Speed: ${speed} km/hr<br>
-                Estimated Time: ${time}
-            `).openPopup();
-
-            console.log("Latitude: " + position.coords.latitude);
-            console.log("Longitude: " + position.coords.longitude);
-
-            if (distance < 0.1) {
-
-                marker.bindPopup("Your item reached the destination!").openPopup();
-            }
-
-        },
-        function (error) {
-            console.error("Error getting location:", error);
-        },
-        {
-            enableHighAccuracy: true,
-            maximumAge: 0,
-            timeout: 2000
-        }
-    );
-}
-
-
-
-
-// index = 0;
-//intervalId = setInterval(async () => {
-//  if (index < coordinates.length) {
-//marker.setLatLng();
-//index++;
-// await getRoute([coordinates[index][0], coordinates[index][1]], [endPoint[0], endPoint[1]]);
-// let { distance, time } = await getRouteDistanceTime(coordinates[index][0], coordinates[index][1], endPoint[0], endPoint[1]);
-
-// console.log("Remaining Distance->", distance, "km");
-// console.log("Estimated Time->", time);
-
-// marker.bindPopup(`
-//     Remaining Distance: ${distance} km<br>
-//     Speed: ${speed} km/hr<br>
-//     Estimated Time: ${time}
-// `).openPopup();
-
-//             if (index === coordinates.length - 1) {
-//                 clearInterval(intervalId);
-//                 marker.bindPopup("Your item reached the destination!").openPopup();
-//             }
-//         }
-//     }, 1000);
-// }
 
 async function getRouteDistanceTime(startLat, startLng, endLat, endLng) {
     let url = `https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${endLng},${endLat}?overview=full&geometries=geojson`;
@@ -117,5 +94,3 @@ function formatTime(time) {
     var minutes = totalMinutes % 60;
     return `${hours} hour(s) ${minutes} minute(s)`;
 }
-
-startJourney();
