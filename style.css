@@ -1,0 +1,18 @@
+
+    #map {
+        height: 100vh;
+    }
+     .scooter-icon {
+        transform-origin: left;
+        transition: transform 0.5s linear;
+        background:transparent;
+        filter: drop-shadow(0 0 5px #000000);
+         /* mix-blend-mode:darken ; */
+        margin-left:-90px;
+        margin-top:-35px;
+
+
+    } 
+
+ 
+
