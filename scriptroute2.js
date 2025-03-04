@@ -19,7 +19,8 @@ function getAngel(start,end){
 }
 
 
-var endPoint = [28.4135, 77.0415];
+//var endPoint = [28.4135, 77.0415];
+var endPoint = [28.3964847,77.0436752];
 var routeLayer = null;
 // var speed = 50;
 let prevLocation = null;
