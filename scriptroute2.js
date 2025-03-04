@@ -11,9 +11,19 @@ var scooterIcon = L.icon({
     className: 'scooter-icon'
 });
 
+function getAngel(start,end){
+    let dy=end[0]-start[0];
+    let dx=end[1]-start[1];
+    let angle=Math.atan2(dy,dx) *(180/Math.PI);
+    return (angle+360)%360;
+}
+
+
 var endPoint = [28.4135, 77.0415];
 var routeLayer = null;
-var speed = 50;
+// var speed = 50;
+let prevLocation = null;
+let prevTime=Date.now();
 
 var marker1 = L.marker(endPoint).addTo(map);
 marker1.bindPopup("<b>Outlet</b><br> Destination point.").openPopup();
@@ -30,13 +40,39 @@ navigator.geolocation.getCurrentPosition(
         let watchId = navigator.geolocation.watchPosition(
             async function (position) {
                 let currentLocation = [position.coords.latitude, position.coords.longitude];
-                marker.setLatLng(currentLocation);
 
-                let { distance, time } = await getRouteDistanceTime(
+                let currentTime=Date.now();
+                if(prevLocation){
+
+                    let angle=getAngel(prevLocation, currentLocation);
+                    marker.setRotationAngle(angle);
+
+                    let distance = map.distance(prevLocation, currentLocation)/1000;
+
+                    if(distance>0.01){
+                        console.log("Route updated");
+                        await getRoute(currentLocation, endPoint);
+                    }
+
+
+                    let timeDiff=(currentTime-prevTime)/3600000;
+                    speed=(distance/timeDiff).toFixed(2);
+                }
+                prevLocation=currentLocation;
+                prevTime=currentTime;
+                
+
+                marker.setLatLng(currentLocation);
+           
+
+
+         
+                let { distance, time,} = await getRouteDistanceTime(
                     position.coords.latitude, position.coords.longitude,
                     endPoint[0], endPoint[1]
                 );
 
+   
                 marker.bindPopup(`
                     Remaining Distance: ${distance} km<br>
                     Speed: ${speed} km/hr<br>
@@ -45,6 +81,10 @@ navigator.geolocation.getCurrentPosition(
 
                 console.log("Latitude: " + position.coords.latitude);
                 console.log("Longitude: " + position.coords.longitude);
+
+                if(distance<1){
+                    routeLayer.setStyle({color: 'green', weight: 4});
+                }
 
                 if (distance < 0.1) {
                     marker.bindPopup("Your item reached the destination!").openPopup();
@@ -70,7 +110,6 @@ async function getRoute(start, end) {
     let response = await fetch(url);
     let data = await response.json();
     let coordinates = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
-
     if (routeLayer) map.removeLayer(routeLayer);
     routeLayer = L.polyline(coordinates, { color: 'blue', weight: 4 }).addTo(map);
 }
@@ -85,7 +124,7 @@ async function getRouteDistanceTime(startLat, startLng, endLat, endLng) {
         let time = (duration / 3600).toFixed(2);
         return { distance: distance.toFixed(2), time: formatTime(time) };
     }
-    return { distance: "Not Available", time: "Not Available" };
+    return { distance: "Not Available", time: "Not Available" , speed: "Not Available"};
 }
 
 function formatTime(time) {
