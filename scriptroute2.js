@@ -11,18 +11,19 @@ var scooterIcon = L.icon({
     className: 'scooter-icon'
 });
 
-function getAngel(start,end){
-    let dy=end[0]-start[0];
-    let dx=end[1]-start[1];
-    let angle=Math.atan2(dy,dx) *(180/Math.PI);
-    return (angle+360)%360;
-}
+// function getAngel(start,end){
+//     let dy=end[0]-start[0];
+//     let dx=end[1]-start[1];
+//     let angle=Math.atan2(dy,dx) *(180/Math.PI);
+//     return (angle+360)%360;
+// }
 
 
-//var endPoint = [28.4135, 77.0415];
+// var endPoint = [28.4135, 77.0415];
+
 var endPoint = [28.3964847,77.0436752];
 var routeLayer = null;
- var speed = 0;
+var speed = 0;
 let prevLocation = null;
 let prevTime=Date.now();
 
@@ -33,7 +34,8 @@ marker1.bindPopup("<b>Outlet</b><br> Destination point.").openPopup();
 navigator.geolocation.getCurrentPosition(
     async function (position) {
         var startPoint = [position.coords.latitude, position.coords.longitude];
-
+        prevLocation=startPoint;
+        prevTime=Date.now();
         var marker = L.marker(startPoint, { icon: scooterIcon }).addTo(map);
 
         await getRoute(startPoint, endPoint);
@@ -45,13 +47,14 @@ navigator.geolocation.getCurrentPosition(
                 let currentTime=Date.now();
                 if(prevLocation){
 
-                    let angle=getAngel(prevLocation, currentLocation);
-                    marker.setRotationAngle(angle);
+                    // let angle=getAngel(prevLocation, currentLocation);
+                    // marker.setRotationAngle(angle);
 
                     let distance = map.distance(prevLocation, currentLocation)/1000;
 
-                    if(distance>0.01){
+                    if(distance>0.004){
                         console.log("Route updated");
+                        if (routeLayer) map.removeLayer(routeLayer); 
                         await getRoute(currentLocation, endPoint);
                     }
 
@@ -61,7 +64,7 @@ navigator.geolocation.getCurrentPosition(
                 }
                 prevLocation=currentLocation;
                 prevTime=currentTime;
-                
+                map.setView(currentLocation, 17, { animate: true }); //center the map on the scooter
 
                 marker.setLatLng(currentLocation);
            
@@ -73,7 +76,7 @@ navigator.geolocation.getCurrentPosition(
                     endPoint[0], endPoint[1]
                 );
 
-   
+   console.log(speed);
                 marker.bindPopup(`
                     Remaining Distance: ${distance} km<br>
                     Speed: ${speed} km/hr<br>
@@ -94,15 +97,17 @@ navigator.geolocation.getCurrentPosition(
             function (error) {
                 console.error("Error getting location:", error);
             },
-            {
-                enableHighAccuracy: true,
-                maximumAge: 0,
-                timeout: 2000
+            {      
+                
+                maximumAge: 1000,
+                timeout: 10000,
+                enableHighAccuracy: true
+       
             }
         );
     },
     function (error) {
-        console.error("Error getting initial location:", error);
+        // console.error("Error getting initial location:", error);
     }
 );
 
