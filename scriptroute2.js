@@ -10,15 +10,6 @@ var scooterIcon = L.icon({
     popupAnchor: [0, -20],
     className: 'scooter-icon'
 });
-
-// function getAngel(start,end){
-//     let dy=end[0]-start[0];
-//     let dx=end[1]-start[1];
-//     let angle=Math.atan2(dy,dx) *(180/Math.PI);
-//     return (angle+360)%360;
-// }
-
-
 // var endPoint = [28.4135, 77.0415];
 
 var endPoint = [28.3964847,77.0436752];
@@ -47,12 +38,9 @@ navigator.geolocation.getCurrentPosition(
                 let currentTime=Date.now();
                 if(prevLocation){
 
-                    // let angle=getAngel(prevLocation, currentLocation);
-                    // marker.setRotationAngle(angle);
+                       let distance = map.distance(prevLocation, currentLocation)/1000;
 
-                    let distance = map.distance(prevLocation, currentLocation)/1000;
-
-                    if(distance>0.004){
+                    if(distance>0.001){
                         console.log("Route updated");
                         if (routeLayer) map.removeLayer(routeLayer); 
                         await getRoute(currentLocation, endPoint);
